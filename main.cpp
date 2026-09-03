@@ -1,79 +1,98 @@
-#include "Matrix.hpp"
 #include <iostream>
 #include <vector>
+#include <chrono>
+#include <random>
+
+using Matrix = std::vector<std::vector<int>>;
+
+Matrix randomMatrix(size_t rows, size_t cols, int minVal, int maxVal, unsigned int seed) {
+  std::mt19937 rng(seed);
+  std::uniform_int_distribution<int> dist(minVal, maxVal);
+
+  Matrix m(rows, std::vector<int>(cols));
+  for (size_t r = 0; r < rows; ++r) {
+    for (size_t c = 0; c < cols; ++c) {
+      m[r][c] = dist(rng);
+    }
+  }
+  return m;
+}
+
+Matrix naiveMatMul(
+  const Matrix& v1,
+  const Matrix& v2
+) {
+  size_t i = v1.size();
+  size_t j = v1[0].size();
+  size_t k = v2[0].size();
+  Matrix result(i, std::vector<int>(k, 0));
+
+  for (size_t x = 0; x < i; ++x) {
+    for (size_t y = 0; y < k; ++y) {
+      for (size_t z = 0; z < j; ++z) {
+        result[x][y] += v1[x][z] * v2[z][y];
+      }
+    }
+  }
+  return result;
+}
+
+Matrix naiveCacheFriendly(
+  const Matrix& v1,
+  const Matrix& v2
+) {
+  size_t i = v1.size();
+  size_t j = v1[0].size();
+  size_t k = v2[0].size();
+  Matrix result(i, std::vector<int>(k, 0));
+
+  // loop order x, z, y is the cache-friendly one:
+  // v1[x][z] is a scalar (broadcast), v2[z][y] and result[x][y]
+  // are both walked row-wise (contiguous) as y increments
+  for (size_t x = 0; x < i; ++x) {
+    for (size_t z = 0; z < j; ++z) {
+      for (size_t y = 0; y < k; ++y) {
+        result[x][y] += v1[x][z] * v2[z][y];
+      }
+    }
+  }
+  return result;
+}
+
+void printMatrix(const Matrix& m) {
+  for (const auto& row : m) {
+    for (int val : row) std::cout << val << " ";
+    std::cout << "\n";
+  }
+}
 
 int main() {
-  std::cout << "Hello World" << std::endl;
-  Matrix<int> intMatrix(10,20);
-  intMatrix.getValues();
-  std::cout << std::endl;
-  
+  const size_t N = 512;
 
-  std::vector<std::vector<int>> v1 = {{1,2},{1,1}};
-  std::vector<std::vector<int>> v2 = {{2,2},{2,2}};
-  std::vector<int> result;
+  Matrix v1 = randomMatrix(N, N, 0, 9, 42);
+  Matrix v2 = randomMatrix(N, N, 0, 9, 1337);
 
-  // Matrix Multiplication Naive Implementation
-  int n = v1.size();
-  int k = v1[0].size();
-  int m = v2[0].size();
-  
-  for (int i = 0; i < n; ++i) {
-    for (int j = 0; j < m; ++j) {
-      int mult = 0;
-      for (int z = 0; z < k; ++z) {
-          mult += v1[i][z] * v2[z][j]; 
-      }
-      result.push_back(mult);
-    }
+  Matrix result1, result2;
+
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+    result1 = naiveMatMul(v1, v2);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << "naiveMatMul time: " << duration.count() << " ms\n";
   }
 
-  std::cout << "\n";
-
-  for (int x : result) {
-    std::cout << x << " ";
+  {
+    auto start = std::chrono::high_resolution_clock::now();
+    result2 = naiveCacheFriendly(v1, v2);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+    std::cout << "naiveCacheFriendly time: " << duration.count() << " ms\n";
   }
 
-  std::cout << "\n";
-
-  // Matrix Multiplication Naive Cache Friendly Implementation
-  /*
-  
-  In naive implementation (NON-CACHE FRIENDLY)
-  v1[i][z] -> z is incrementing but moving through one row
-  v2[z][j] -> z is incrementing but moving through multiple rows
-
-  This is bad for caching because each row is a contiguous block of memory, making it hard to cache
-  Due to it having to pull different memory locations
-
-  In naive implementation (Cache Friendly)
-  v1[i][z] -> z is incrementing but moving through one row
-  v2[z][j] -> j is incremening moving through one row as well
-
-  Key change is that we update directly the position within the result matrix and
-  Add to it as we continue to change rows
-  
-  v1 {
-  <std::vector> 1 1
-  <std::vector> 1 1
-  }
-
-  v2 {
-  <std::vector> 2 2
-  <std::vector> 2 2
-  }
-  */
-  std::vector<std::vector<int>> result_2 = {{0,0}, {0,0}};
-
-  for (int i = 0; i < n; ++i) {
-    for (int z = 0; z < k; ++z) {
-      for (int j = 0; j < m; ++j) {
-        result_2[i][j] += v1[i][z] * v2[z][j];
-      }
-    }
-  }
- 
-  std::cout << "\n";
+  // sanity check: both implementations should agree
+  bool match = (result1 == result2);
+  std::cout << "Results match: " << (match ? "yes" : "no") << "\n";
 
   return 0;
 }
