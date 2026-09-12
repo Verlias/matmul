@@ -1,3 +1,3 @@
 hello:
-	g++ -O2 -std=c++17 main.cpp -o program
+	g++ -O3 -march=native -std=c++17 main.cpp -o program
 	./program
