@@ -4,38 +4,53 @@
 #include <random>
 #include <algorithm>
 
-using Matrix = std::vector<std::vector<int>>;
+#include "Matrix.hpp"
+
 using Clock = std::chrono::steady_clock;
 
-Matrix randomMatrix(size_t rows, size_t cols, int minVal, int maxVal, unsigned int seed) {
-  std::mt19937 rng(seed);
-  std::uniform_int_distribution<int> dist(minVal, maxVal);
 
-  Matrix m(rows, std::vector<int>(cols));
-  for (size_t r = 0; r < rows; ++r) {
-    for (size_t c = 0; c < cols; ++c) {
-      m[r][c] = dist(rng);
+Matrix randomMatrix(
+    size_t rows,
+    size_t cols,
+    int minValue,
+    int maxValue,
+    unsigned int seed
+) {
+    std::mt19937 rng(seed);
+    std::uniform_int_distribution<int> distribution(
+        minValue,
+        maxValue
+    );
+
+    Matrix matrix(rows, cols);
+
+    for (size_t row = 0; row < rows; ++row) {
+        int* currentRow = matrix.rowData(row);
+
+        for (size_t col = 0; col < cols; ++col) {
+            currentRow[col] = distribution(rng);
+        }
     }
-  }
-  return m;
+
+    return matrix;
 }
 
 Matrix naiveMatMul(
   const Matrix& v1,
   const Matrix& v2
 ) {
-  const size_t i = v1.size();
-  const size_t j = v1[0].size();
-  const size_t k = v2[0].size();
-  Matrix result(i, std::vector<int>(k, 0));
+  const size_t i = v1.rows;
+  const size_t j = v1.cols;
+  const size_t k = v2.cols;
+  Matrix result(i, k, 0);
 
   for (size_t x = 0; x < i; ++x) {
-    auto& resultRow = result[x];
-    const auto& v1Row = v1[x];
+    int* resultRow = result.rowData(x);
+    const int* v1Row = v1.rowData(x);
     for (size_t y = 0; y < k; ++y) {
       int sum = 0;
       for (size_t z = 0; z < j; ++z) {
-        sum += v1Row[z] * v2[z][y];
+        sum += v1Row[z] * v2(z,y);
       }
       resultRow[y] = sum;
     }
@@ -47,17 +62,17 @@ Matrix naiveCacheFriendly(
   const Matrix& v1,
   const Matrix& v2
 ) {
-  const size_t i = v1.size();
-  const size_t j = v1[0].size();
-  const size_t k = v2[0].size();
-  Matrix result(i, std::vector<int>(k, 0));
+  const size_t i = v1.rows;
+  const size_t j = v1.cols;
+  const size_t k = v2.cols;
+  Matrix result(i, k, 0);
 
   for (size_t x = 0; x < i; ++x) {
-    auto& resultRow = result[x];
-    const auto& v1Row = v1[x];
+    int* resultRow = result.rowData(x);
+    const int* v1Row = v1.rowData(x);
     for (size_t z = 0; z < j; ++z) {
       const int value = v1Row[z];
-      const auto& v2Row = v2[z];
+      const int* v2Row = v2.rowData(z);
       for (size_t y = 0; y < k; ++y) {
         resultRow[y] += value * v2Row[y];
       }
@@ -70,11 +85,11 @@ Matrix cacheTiling(
   const Matrix& v1,
   const Matrix& v2
 ) {
-  const size_t i = v1.size();
-  const size_t j = v1[0].size();
-  const size_t k = v2[0].size();
+  const size_t i = v1.rows;
+  const size_t j = v1.cols;
+  const size_t k = v2.cols;
   constexpr size_t TileSize = 128;
-  Matrix result(i, std::vector<int>(k, 0));
+  Matrix result(i, k, 0);
 
   for (size_t xx = 0; xx < i; xx += TileSize) {
     const size_t xEnd = std::min(xx + TileSize, i);
@@ -86,11 +101,11 @@ Matrix cacheTiling(
             const size_t zEnd = std::min(zz + TileSize, j);
 
         for (size_t x = xx; x < xEnd; ++x) {
-          auto& resultRow = result[x];
-          const auto& v1Row = v1[x];
+          int* resultRow = result.rowData(x);
+          const int* v1Row = v1.rowData(x);
           for (size_t z = zz; z < zEnd; ++z) {
             const int value = v1Row[z];
-            const auto& v2Row = v2[z];
+            const int* v2Row = v2.rowData(z);
             for (size_t y = yy; y < yEnd; ++y) {
               resultRow[y] += value * v2Row[y];
             }
@@ -104,12 +119,12 @@ Matrix cacheTiling(
   return result;
 }
 
-void printMatrix(const Matrix& m) {
-  for (const auto& row : m) {
-    for (int val : row) std::cout << val << " ";
-    std::cout << "\n";
-  }
-}
+// void printMatrix(const Matrix& m) {
+//   for (const auto& row : m) {
+//     for (int val : row) std::cout << val << " ";
+//     std::cout << "\n";
+//   }
+// }
 
 int main() {
   const size_t N = 512;
