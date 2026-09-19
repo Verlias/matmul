@@ -5,8 +5,8 @@ CXXFLAGS ?= -O3 -march=native -std=c++17 -Wall -Wextra -Wpedantic
 
 all: program
 
-program: main.cpp Matrix.hpp
-	$(CXX) $(CXXFLAGS) main.cpp -o $@
+program: src/main.cpp src/Matrix.hpp
+	$(CXX) $(CXXFLAGS) src/main.cpp -o $@
 
 run: program
 	./program

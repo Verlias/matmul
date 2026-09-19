@@ -28,7 +28,7 @@ All four algorithms use O(mnp) arithmetic. The tiling variants change data acces
 
 ## Performance
 
-Measured on a MacBook Pro with an Apple M5 Pro, macOS 26.6.2, and Apple clang 21.0.0. Build command: `g++ -O3 -march=native -std=c++17 -Wall -Wextra -Wpedantic main.cpp -o /tmp/matmul-clean`. Inputs were two 1024 × 1024 matrices. These are medians of five consecutive runs, in the fixed order shown. Matrix creation and result comparison were outside the timed region; result allocation and zero initialization were inside it.
+Measured on a MacBook Pro with an Apple M5 Pro, macOS 26.6.2, and Apple clang 21.0.0. Build command: `g++ -O3 -march=native -std=c++17 -Wall -Wextra -Wpedantic src/main.cpp -o /tmp/matmul-clean`. Inputs were two 1024 × 1024 matrices. These are medians of five consecutive runs, in the fixed order shown. Matrix creation and result comparison were outside the timed region; result allocation and zero initialization were inside it.
 
 | Implementation | Median time | Speedup vs. direct |
 | --- | ---: | ---: |
@@ -45,6 +45,10 @@ These numbers describe this compiler, machine, input size, and run order. They a
 - A tile size is a parameter to measure, not an automatic improvement. The 128 element cache tiled version took about 74.6 ms here, slower than the simple contiguous loop.
 - Holding a 4 × 4 result block in local accumulators gave the best measured time, about 47.7 ms. The edge loops matter: `make check` covers dimensions that are not multiples of 4 or 128.
 - A performance result needs context. Compiler flags, allocation inside the timed region, input shape, and measurement order can all change the comparison.
+
+## Where I stopped
+
+I decided not to go deeper into the remaining possible optimizations for this project. If I continued, I would explore multithreading, explicit SIMD instructions, packing matrix data for better reuse, and tuning tile sizes for different shapes and machines. Each would need its own correctness checks and benchmarks.
 
 ## Notes and limits
 
