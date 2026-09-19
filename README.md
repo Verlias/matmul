@@ -1,4 +1,4 @@
-# Matrix multiplication experiments
+# Matrix multiplication
 
 A small C++17 benchmark comparing four single threaded integer matrix multiplication loops. `Matrix` stores row major `int` values. Every implementation computes `A (m × n) * B (n × p)` and returns an `m × p` matrix.
 
